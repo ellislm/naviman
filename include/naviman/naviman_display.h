@@ -37,9 +37,9 @@
 #endif
 
 #include <QObject>
-
+#include <ros/ros.h>
 #include <OGRE/OgreRenderTargetListener.h>
-
+#include <razer_hydra/Hydra.h>
 #include "rviz/display.h"
 
 namespace Ogre
@@ -52,12 +52,12 @@ class Viewport;
 
 namespace rviz
 {
-class BoolProperty;
-class StringProperty;
+//class BoolProperty;
+//class StringProperty;
 class RenderWidget;
-class FloatProperty;
+//class FloatProperty;
 class VectorProperty;
-class TfFrameProperty;
+//class TfFrameProperty;
 }
 
 namespace naviman
@@ -83,8 +83,9 @@ protected:
 
   virtual void onEnable();
   virtual void onDisable();
-
+  void pubsubSetup();
   void updateCamera();
+  void camsubCallback(const razer_hydra::Hydra::ConstPtr& hydra_sub);
 
 protected Q_SLOTS:
 /*
@@ -97,11 +98,11 @@ protected Q_SLOTS:
 */
 private:
 void cameraSetup();
+void 
 /*
   rviz::BoolProperty *fullscreen_property_;
   rviz::FloatProperty *prediction_dt_property_;
 
-  rviz::BoolProperty *pub_tf_property_;
   rviz::StringProperty *pub_tf_frame_property_;
 
   rviz::BoolProperty *follow_cam_property_;
@@ -110,11 +111,17 @@ void cameraSetup();
   rviz::VectorProperty *offset_property_;
 
   rviz::FloatProperty *near_clip_property_;
-*/Ogre::Camera* n_cameras[2]; 
+*/Ogre::Camera* n_cameras_[2]; 
   rviz::RenderWidget *render_widget_;
   Ogre::SceneNode *scene_node_;
   Ogre::Viewport *n_viewports[2];
-  Ogre::RenderWindow *window;
+  Ogre::RenderWindow *window_;
+  float cam_pos[3];
+  ros::NodeHandle nh_;
+  ros::Subscriber subscriber_camera_;
+  rviz::VectorProperty *typed_lookAt_;
+  rviz::VectorProperty *typed_Position_;
+  rviz::BoolProperty *use_typed_coords_;
 /*
 #ifndef Q_MOC_RUN
   tf::TransformBroadcaster tf_pub_;

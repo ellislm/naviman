@@ -61,18 +61,22 @@
 
 #include "naviman/naviman_display.h"
 
+#define _x 0
+#define _y 1
+#define _z 2
+
 namespace naviman
 {
 navmanDisplay::navmanDisplay()
 : render_widget_(0)
 , scene_node_(0)
-, window(0) 
+, window_(0) 
 {
   std::string rviz_path = ros::package::getPath(ROS_PACKAGE_NAME);
   Ogre::ResourceGroupManager::getSingleton().addResourceLocation( rviz_path + "/ogre_media", "FileSystem", ROS_PACKAGE_NAME );
   Ogre::ResourceGroupManager::getSingleton().initialiseResourceGroup(ROS_PACKAGE_NAME);
 //  connect( QApplication::desktop(), SIGNAL( screenCountChanged ( int ) ), this, SLOT( onScreenCountChanged(int)) );
-  n_cameras[0] = 0, n_cameras[1] = 0;
+  n_cameras_[0] = 0, n_cameras_[1] = 0;
 }
 navmanDisplay::~navmanDisplay()
 {
@@ -80,14 +84,14 @@ navmanDisplay::~navmanDisplay()
   { 
    // if (n_viewports[i])
    // {
-    //  window->removeViewport(i);
+    //  window_->removeViewport(i);
      // n_viewports[i] = 0;
    // }
-  //  if (n_cameras[i])
+  //  if (n_cameras_[i])
    // {
-      n_cameras[i]->getParentSceneNode()->detachObject(n_cameras[i]);
-      scene_manager_->destroyCamera(n_cameras[i]);
-      n_cameras[i] = 0;
+      n_cameras_[i]->getParentSceneNode()->detachObject(n_cameras_[i]);
+      scene_manager_->destroyCamera(n_cameras_[i]);
+      n_cameras_[i] = 0;
    // }
   }
   if (scene_node_)
@@ -97,9 +101,9 @@ navmanDisplay::~navmanDisplay()
     scene_node_ = 0;
   }
 //  scene_manager_ = 0;
-  window = 0;
+  window_ = 0;
   delete render_widget_;
-  n_cameras[0] = 0, n_cameras[1] = 0;
+  n_cameras_[0] = 0, n_cameras_[1] = 0;
 }
 
 //Overrides from rviz Display
@@ -108,25 +112,38 @@ void navmanDisplay::onInitialize()
   render_widget_ = new rviz::RenderWidget(rviz::RenderSystem::get());
   render_widget_->setVisible(false);
   render_widget_->setWindowTitle("Navigation_Manipulation Space");
-
-  render_widget_->setParent(context_->getWindowManager()->getParentWindow());
+  render_widget_->resize(640,480);
+  render_widget_->show();
+//  render_widget_->setParent(context_->getWindowManager()->getParentWindow());
   render_widget_->setWindowFlags(Qt::WindowSystemMenuHint | Qt::WindowTitleHint);
-
-  window = render_widget_->getRenderWindow();
-  window->setVisible(false);
-  window->setAutoUpdated(false);
-  window->addListener(this);
+ 
+  window_ = render_widget_->getRenderWindow();
+  window_->setVisible(false);
+  window_->setAutoUpdated(false);
+  window_->addListener(this);
 
   scene_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode();
+  pubsubSetup();
 }
 void navmanDisplay::update(float wall_dt, float ros_dt)
 {
   updateCamera();
-  window = render_widget_->getRenderWindow();
-  window->update(false);
+  window_ = render_widget_->getRenderWindow();
+  window_->update(false);
 }
 void navmanDisplay::reset(){}
 
+void navmanDisplay::pubsubSetup()
+{
+subscriber_camera_ = nh_.subscribe<razer_hydra::Hydra>("hydra_calib",10, &navmanDisplay::camsubCallback,this);
+}
+
+void navmanDisplay::camsubCallback(const razer_hydra::Hydra::ConstPtr& hydra_sub)
+{
+cam_pos[_x] = hydra_sub->paddles[1].transform.translation.x;
+cam_pos[_y] = hydra_sub->paddles[1].transform.translation.z;
+cam_pos[_z] = hydra_sub->paddles[1].transform.translation.y;
+}
 void navmanDisplay::updateCamera()
 {
 
@@ -140,7 +157,7 @@ void navmanDisplay::updateCamera()
   ori = ori * r;
 }
 //  pos += offset_property_->getVector();
-  scene_node_->setPosition(0,10,10);
+  scene_node_->setPosition(0,0,0);
 
   Ogre::Vector3 x_axis = ori * Ogre::Vector3(1,0,0);
   float yaw = atan2( x_axis.y, x_axis.x );// - M_PI*0.5;
@@ -153,7 +170,8 @@ void navmanDisplay::updateCamera()
   ori = ori * r;
 }
   scene_node_->setOrientation(ori);
-
+  n_cameras_[0]->setPosition(cam_pos[_x]*5,cam_pos[_y]*5,cam_pos[_z]*5);
+  n_cameras_[0]->lookAt(cam_pos[_x]*-5,cam_pos[_y]*-5,cam_pos[_z]*-5);
 }
 //Overrides from OgreTargetListener
 void navmanDisplay::preRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
@@ -162,27 +180,27 @@ updateCamera();
 }
 void navmanDisplay::postRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
 {
-  window = render_widget_->getRenderWindow();
-  window->swapBuffers();
+  window_ = render_widget_->getRenderWindow();
+  window_->swapBuffers();
 }
 void navmanDisplay::cameraSetup()
 {
   Ogre::ColourValue bg_color = context_->getViewManager()->getRenderPanel()->getViewport()->getBackgroundColour();
 
-  window = render_widget_->getRenderWindow();
-  n_cameras[0] = scene_manager_->createCamera("Camera_left");
-  //n_camera[1] = scene_manager_->createCamera("Camera_Right");
-  scene_node_->attachObject(n_cameras[0]);
-  n_cameras[0]->setNearClipDistance(0.01f);
-  n_cameras[0]->setFarClipDistance(10000.0f);
-  n_cameras[0]->setPosition(0,0,0);
-  n_cameras[0]->lookAt(Ogre::Vector3(0,-10,-10));
-  n_viewports[0] = window->addViewport(n_cameras[0],0,0,0,1.0,1.0f);
+  window_ = render_widget_->getRenderWindow();
+  n_cameras_[0] = scene_manager_->createCamera("Camera_left");
+  //n_cameras_[1] = scene_manager_->createCamera("Camera_Right");
+  scene_node_->attachObject(n_cameras_[0]);
+  n_cameras_[0]->setNearClipDistance(0.01f);
+  n_cameras_[0]->setFarClipDistance(10000.0f);
+  n_cameras_[0]->setPosition(0,0,0);
+  n_cameras_[0]->lookAt(0,0,0);
+  n_viewports[0] = window_->addViewport(n_cameras_[0],0,0,0,1.0,1.0f);
   n_viewports[0]->setBackgroundColour(bg_color);
 }
 void navmanDisplay::onEnable()
 {
-  if(!n_cameras[0])
+  if(!n_cameras_[0])
   {
   cameraSetup();
   }
