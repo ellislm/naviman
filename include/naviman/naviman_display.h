@@ -38,7 +38,7 @@
 #include <OGRE/OgreRenderTargetListener.h>
 #include <razer_hydra/Hydra.h>
 #include "rviz/display.h"
-
+#include "rvinci_pose.h"
 namespace Ogre
 {
 class SceneNode;
@@ -129,8 +129,9 @@ void cameraSetup();
   rviz::VectorProperty *xyz_Scalar_;
   tf::Transform hydra_base_tf_;
   tf::TransformBroadcaster br_;
-  Ogre::Vector3 old_camera_;
-  Ogre::Vector3 old_cursor_;
+  Ogre::Vector3* old_camera_;
+  Ogre::Vector3* transient_;
+  rvinciPose cursor_[2];
 
 /*
 #ifndef Q_MOC_RUN
