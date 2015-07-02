@@ -31,10 +31,7 @@
 #ifndef NAVIMAN_DISPLAY_H
 #define NAVIMAN_DISPLAY_H
 
-#ifndef Q_MOC_RUN
-#include <boost/shared_ptr.hpp>
 #include <tf/transform_broadcaster.h>
-#endif
 
 #include <QObject>
 #include <ros/ros.h>
@@ -58,6 +55,7 @@ class RenderWidget;
 //class FloatProperty;
 class VectorProperty;
 //class TfFrameProperty;
+class QuaternionProperty;
 }
 
 namespace naviman
@@ -98,7 +96,7 @@ protected Q_SLOTS:
 */
 private:
 void cameraSetup();
-void 
+
 /*
   rviz::BoolProperty *fullscreen_property_;
   rviz::FloatProperty *prediction_dt_property_;
@@ -111,17 +109,29 @@ void
   rviz::VectorProperty *offset_property_;
 
   rviz::FloatProperty *near_clip_property_;
-*/Ogre::Camera* n_cameras_[2]; 
+*/
+  Ogre::Camera* n_cameras_[2]; 
   rviz::RenderWidget *render_widget_;
   Ogre::SceneNode *scene_node_;
   Ogre::Viewport *n_viewports[2];
   Ogre::RenderWindow *window_;
-  float cam_pos[3];
+  float cam_pos[6];
+  bool right_bumper_, left_bumper_;
+  float right_trigger_;
   ros::NodeHandle nh_;
   ros::Subscriber subscriber_camera_;
-  rviz::VectorProperty *typed_lookAt_;
-  rviz::VectorProperty *typed_Position_;
-  rviz::BoolProperty *use_typed_coords_;
+  ros::Publisher publisher_rhcursor_;
+  ros::Publisher publisher_lhcursor_;
+  rviz::VectorProperty *camera_Focus_;
+  rviz::VectorProperty *camera_Position_;
+  rviz::BoolProperty *use_manual_coords_;
+  rviz::VectorProperty *sn_Position_;
+  rviz::VectorProperty *xyz_Scalar_;
+  tf::Transform hydra_base_tf_;
+  tf::TransformBroadcaster br_;
+  Ogre::Vector3 old_camera_;
+  Ogre::Vector3 old_cursor_;
+
 /*
 #ifndef Q_MOC_RUN
   tf::TransformBroadcaster tf_pub_;
