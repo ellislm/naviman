@@ -81,9 +81,7 @@ protected:
 
   virtual void onEnable();
   virtual void onDisable();
-  void pubsubSetup();
   void updateCamera();
-  void camsubCallback(const razer_hydra::Hydra::ConstPtr& hydra_sub);
 
 protected Q_SLOTS:
 /*
@@ -94,8 +92,12 @@ protected Q_SLOTS:
 
   void onScreenCountChanged( int newCount );
 */
+
 private:
-void cameraSetup();
+  void cameraSetup();
+  void inputCallback(const razer_hydra::Hydra::ConstPtr& hydra_sub);
+  void pubsubSetup();
+  void publishCursorUpdate();
 
 /*
   rviz::BoolProperty *fullscreen_property_;
@@ -115,7 +117,6 @@ void cameraSetup();
   Ogre::SceneNode *scene_node_;
   Ogre::Viewport *n_viewports[2];
   Ogre::RenderWindow *window_;
-  float cam_pos[6];
   bool right_bumper_, left_bumper_;
   float right_trigger_;
   ros::NodeHandle nh_;
@@ -129,10 +130,11 @@ void cameraSetup();
   rviz::VectorProperty *xyz_Scalar_;
   tf::Transform hydra_base_tf_;
   tf::TransformBroadcaster br_;
-  Ogre::Vector3* old_camera_;
-  Ogre::Vector3* transient_;
   rvinciPose cursor_[2];
-
+  rvinciPose camera_Pose_;
+  rvinciPose sn_Pose_;
+  rvinciPose input_pose_[2];
+  rvinciPose input_change_[2];
 /*
 #ifndef Q_MOC_RUN
   tf::TransformBroadcaster tf_pub_;

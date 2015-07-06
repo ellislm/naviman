@@ -36,6 +36,7 @@ include_directories(include
 # run Qt moc generator
 qt4_wrap_cpp(MOC_FILES
   include/${PROJECT_NAME}/naviman_display.h
+# include/${PROJECT_NAME}/rvinci_cursor.h
  include/${PROJECT_NAME}/fixed_view_controller.h
 #  include/oculus_rviz_plugins/fixed_view_controller.h
 )
@@ -43,6 +44,7 @@ qt4_wrap_cpp(MOC_FILES
 add_library(naviman
   src/naviman_display.cpp
   src/fixed_view_controller.cpp
+  src/rvinci_pose.cpp
   ${MOC_FILES}
 )
 

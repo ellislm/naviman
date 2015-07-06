@@ -61,12 +61,11 @@
 #include <rviz/frame_manager.h>
 #include <interaction_cursor_msgs/InteractionCursorUpdate.h>
 #include "naviman/naviman_display.h"
-#include "naviman/rvinci_pose.h"
 
 #define _x 0
 #define _y 1
 #define _z 2
-
+#define _RIGHT 1
 namespace naviman
 {
 navmanDisplay::navmanDisplay()
@@ -135,100 +134,8 @@ void navmanDisplay::onInitialize()
   window_->setVisible(false);
   window_->setAutoUpdated(false);
   window_->addListener(this); 
-  old_camera_ = new Ogre::Vector3(0,0,0);
-  transient_ = new Ogre::Vector3(0,0,0);
   scene_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode();
   pubsubSetup();
-}
-void navmanDisplay::update(float wall_dt, float ros_dt)
-{
-  updateCamera();
-  window_ = render_widget_->getRenderWindow();
-  window_->update(false);
-}
-void navmanDisplay::reset(){}
-
-void navmanDisplay::pubsubSetup()
-{
-subscriber_camera_ = nh_.subscribe<razer_hydra::Hydra>("hydra_calib",10, &navmanDisplay::camsubCallback,this);
-publisher_rhcursor_ = nh_.advertise<interaction_cursor_msgs::InteractionCursorUpdate>("navman_cursor_right/update",10);
-publisher_lhcursor_ = nh_.advertise<interaction_cursor_msgs::InteractionCursorUpdate>("navman_cursor_left/update",10);
-}
-
-void navmanDisplay::camsubCallback(const razer_hydra::Hydra::ConstPtr& hydra_sub)
-{
-for (int i = 0; i<2; ++i)
-{
-old_camera_->x = cam_pos[3];
-old_camera_->y = cam_pos[4];
-old_camera_->z = cam_pos[5];
-cam_pos[3*i] = hydra_sub->paddles[i].transform.translation.y;
-cam_pos[3*i+1] = hydra_sub->paddles[i].transform.translation.x;
-cam_pos[3*i+2] = hydra_sub->paddles[i].transform.translation.z;
-}
-right_trigger_ = hydra_sub->paddles[1].trigger;
-right_bumper_ = hydra_sub->paddles[1].buttons[0];
-left_bumper_ = hydra_sub->paddles[0].buttons[0];
-if (!right_bumper_)
-{
-interaction_cursor_msgs::InteractionCursorUpdate lhcursor;
-interaction_cursor_msgs::InteractionCursorUpdate rhcursor;
-rhcursor.pose.header.frame_id = "/camera_frame";
-rhcursor.pose.header.stamp = ros::Time::now();
-rhcursor.pose.pose.position.x = cam_pos[3] - transient_->x;
-rhcursor.pose.pose.position.y = cam_pos[4] - transient_->y;
-rhcursor.pose.pose.position.z = cam_pos[5] - transient_->z;
-//rhcursor.pose.pose.orientation = hydra_sub->paddles[1].transform.rotation();
-
-lhcursor.pose.header.frame_id = "/camera_frame";
-lhcursor.pose.header.stamp = ros::Time::now();
-lhcursor.pose.pose.position.x = cam_pos[0] - transient_->x;
-lhcursor.pose.pose.position.y = cam_pos[1] - transient_->y;
-lhcursor.pose.pose.position.z = cam_pos[2] - transient_->z;
-//lhcursor.pose.pose.orientation = hydra_sub->paddles[0].transform.rotation();
-publisher_rhcursor_.publish(rhcursor);
-publisher_lhcursor_.publish(lhcursor);
-}
-}
-void navmanDisplay::updateCamera()
-{
-  Ogre::Vector3 xyzscale = xyz_Scalar_->getVector();
-  for (int i = 0; i<2; ++i)
-  {
-  if(use_manual_coords_->getBool())
-    {
-      scene_node_->setPosition(sn_Position_->getVector());
-      n_cameras_[i]->lookAt(camera_Focus_->getVector());
-      n_cameras_[i]->setFixedYawAxis(true, scene_node_->getOrientation() * Ogre::Vector3::UNIT_Z);
-    }
-  if(!use_manual_coords_->getBool() && right_bumper_)
-    {
-     transient_->x= cam_pos[3] - old_camera_->x;
-     transient_->y= cam_pos[4] - old_camera_->y;
-     transient_->z= cam_pos[5] - old_camera_->z;
-     camera_Focus_->setVector(camera_Focus_->getVector() + *transient_);
-     // n_cameras_[i]->setPosition(cam_pos[_x]*5,cam_pos[_y]*5,cam_pos[_z]*5);
-     n_cameras_[i]->setFixedYawAxis(true, scene_node_->getOrientation() * Ogre::Vector3::UNIT_Z);
-     n_cameras_[i]->lookAt(camera_Focus_->getVector()*xyzscale);
-     hydra_base_tf_.setOrigin(tf::Vector3(cam_pos[_x+3]*xyzscale.x,cam_pos[_y+3]*xyzscale.y,cam_pos[_z+3]*xyzscale.z));
-     hydra_base_tf_.setRotation(tf::Quaternion(0.0,0.0,0.0,1));
-     if(left_bumper_)
-      {
-        scene_node_->setPosition(sn_Position_->getVector()+Ogre::Vector3(cam_pos[_x+3],cam_pos[_y+3],cam_pos[_z+3])*xyzscale);
-      }
-    }
-  }
-  br_.sendTransform(tf::StampedTransform(hydra_base_tf_, ros::Time::now(), "base_link","/camera_frame"));
-}
-//Overrides from OgreTargetListener
-void navmanDisplay::preRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
-{
-updateCamera();
-}
-void navmanDisplay::postRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
-{
-  window_ = render_widget_->getRenderWindow();
-  window_->swapBuffers();
 }
 void navmanDisplay::cameraSetup()
 {
@@ -248,6 +155,100 @@ void navmanDisplay::cameraSetup()
   n_viewports[i] = window_->addViewport(n_cameras_[i],i,0.5f*i,0,0.5f,1.0f);
   n_viewports[i]->setBackgroundColour(bg_color);
   }
+}
+void navmanDisplay::update(float wall_dt, float ros_dt)
+{
+  updateCamera();
+  window_ = render_widget_->getRenderWindow();
+  window_->update(false);
+}
+void navmanDisplay::reset(){}
+
+void navmanDisplay::pubsubSetup()
+{
+  subscriber_camera_ = nh_.subscribe<razer_hydra::Hydra>("hydra_calib",10, &navmanDisplay::inputCallback,this);
+  publisher_rhcursor_ = nh_.advertise<interaction_cursor_msgs::InteractionCursorUpdate>("navman_cursor_right/update",10);
+  publisher_lhcursor_ = nh_.advertise<interaction_cursor_msgs::InteractionCursorUpdate>("navman_cursor_left/update",10);
+}
+void navmanDisplay::inputCallback(const razer_hydra::Hydra::ConstPtr& hydra_sub)
+{
+  rvinciPose xyzscale;
+  xyzscale.setOgreVector(xyz_Scalar_->getVector());
+for (int i = 0; i<2; ++i)
+{
+  rvinciPose old_input = input_pose_[i];
+  input_pose_[i].setGMVector(hydra_sub->paddles[i].transform.translation);
+  input_change_[i].setOgreVector(input_pose_[i].getOgreVector() - old_input.getOgreVector());
+  input_change_[i]*=xyzscale;
+}
+
+right_trigger_ = hydra_sub->paddles[1].trigger;
+right_bumper_ = hydra_sub->paddles[1].buttons[0];
+left_bumper_ = hydra_sub->paddles[0].buttons[0];
+
+if (!right_bumper_)
+{
+for (int i = 0; i<2; ++i){cursor_[i].updatePosition(input_change_[i]);}
+publishCursorUpdate();
+}
+}
+void navmanDisplay::publishCursorUpdate()
+{
+  interaction_cursor_msgs::InteractionCursorUpdate lhcursor;
+  interaction_cursor_msgs::InteractionCursorUpdate rhcursor;
+
+  rhcursor.pose.header.frame_id = "/camera_frame";
+  rhcursor.pose.header.stamp = ros::Time::now();
+  rhcursor.pose.pose.position = cursor_[1].getGMPoint();
+
+  lhcursor.pose.header.frame_id = "/camera_frame";
+  lhcursor.pose.header.stamp = ros::Time::now();
+  lhcursor.pose.pose.position = cursor_[0].getGMPoint();
+
+  publisher_rhcursor_.publish(rhcursor);
+  publisher_lhcursor_.publish(lhcursor);
+}
+void navmanDisplay::updateCamera()
+{
+  sn_Pose_.setOffset(sn_Position_->getVector());
+   
+  if(use_manual_coords_->getBool())
+    {
+      scene_node_->setPosition(sn_Position_->getVector());
+    for (int i = 0; i<2; ++i)
+      {
+      n_cameras_[i]->lookAt(camera_Focus_->getVector());
+      n_cameras_[i]->setFixedYawAxis(true, scene_node_->getOrientation() * Ogre::Vector3::UNIT_Z);
+      }
+    }
+  if(!use_manual_coords_->getBool() && right_bumper_)
+    {
+     camera_Pose_.updatePosition(input_change_[_RIGHT]);
+     camera_Focus_->setVector(camera_Pose_.getOgreVector());
+    for (int i = 0; i<2; ++i)
+       {
+       n_cameras_[i]->setFixedYawAxis(true, scene_node_->getOrientation() * Ogre::Vector3::UNIT_Z);
+       n_cameras_[i]->lookAt(camera_Focus_->getVector());
+       }
+     hydra_base_tf_.setOrigin(camera_Pose_.getTFVector());
+     hydra_base_tf_.setRotation(tf::Quaternion(0.0,0.0,0.0,1));
+     if(left_bumper_)
+      {
+        sn_Pose_.updatePosition(input_change_[_RIGHT]);
+        scene_node_->setPosition(sn_Pose_.getOgreVector());
+      }
+    }
+  br_.sendTransform(tf::StampedTransform(hydra_base_tf_, ros::Time::now(), "base_link","/camera_frame"));
+}
+//Overrides from OgreTargetListener
+void navmanDisplay::preRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
+{
+updateCamera();
+}
+void navmanDisplay::postRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
+{
+  window_ = render_widget_->getRenderWindow();
+  window_->swapBuffers();
 }
 void navmanDisplay::onEnable()
 {
