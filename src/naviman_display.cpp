@@ -119,6 +119,10 @@ void navmanDisplay::onInitialize()
   //                            "Position of camera to world base frame",this);
   camera_Focus_ = new rviz::VectorProperty("Focus",Ogre::Vector3(0,0,0),
                                               "Focus Point of Camera",this);
+  Lcamera_Focus_ = new rviz::VectorProperty("LFocus",Ogre::Vector3(0,0,0),
+                                              "LFocus Point of Camera",this);
+  Rcamera_Focus_ = new rviz::VectorProperty("RFocus",Ogre::Vector3(0,0,0),
+                                              "RFocus Point of Camera",this);
   sn_Position_ = new rviz::VectorProperty("SN Position",Ogre::Vector3(0,-5,2),
                           "Position of scene node to world base frame",this);
   xyz_Scalar_ = new rviz::VectorProperty("X,Y,Z Scalars",Ogre::Vector3(1,1,1),
@@ -228,6 +232,8 @@ void navmanDisplay::updateCamera()
     for (int i = 0; i<2; ++i)
        {
        n_cameras_[i]->setFixedYawAxis(true, scene_node_->getOrientation() * Ogre::Vector3::UNIT_Z);
+       if(i == 0){Lcamera_Focus_->setVector(camera_Focus_->getVector());}
+       else{Rcamera_Focus_->setVector(camera_Focus_->getVector());}
        n_cameras_[i]->lookAt(camera_Focus_->getVector());
        }
      hydra_base_tf_.setOrigin(camera_Pose_.getTFVector());

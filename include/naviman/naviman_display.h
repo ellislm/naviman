@@ -124,6 +124,8 @@ private:
   ros::Publisher publisher_rhcursor_;
   ros::Publisher publisher_lhcursor_;
   rviz::VectorProperty *camera_Focus_;
+    rviz::VectorProperty *Lcamera_Focus_;
+    rviz::VectorProperty *Rcamera_Focus_;
   rviz::VectorProperty *camera_Position_;
   rviz::BoolProperty *use_manual_coords_;
   rviz::VectorProperty *sn_Position_;
