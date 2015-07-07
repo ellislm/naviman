@@ -70,7 +70,7 @@ namespace naviman
 {
 navmanDisplay::navmanDisplay()
 : render_widget_(0)
-, scene_node_(0)
+, camera_node_(0)
 , window_(0)
 {
   std::string rviz_path = ros::package::getPath(ROS_PACKAGE_NAME);
@@ -95,18 +95,18 @@ navmanDisplay::~navmanDisplay()
       n_cameras_[i] = 0;
    }
   }
-  if (scene_node_)
+  if (camera_node_)
   {
-    scene_node_->getParentSceneNode()->removeChild(scene_node_);
-    scene_manager_->destroySceneNode(scene_node_);
-    scene_node_ = 0;
+    camera_node_->getParentSceneNode()->removeChild(camera_node_);
+    scene_manager_->destroySceneNode(camera_node_);
+    camera_node_ = 0;
   }
 //  scene_manager_ = 0;
   window_ = 0;
   delete render_widget_;
   delete use_manual_coords_;
-  delete camera_Focus_;
-  delete sn_Position_;
+  delete property_camfocus_;
+  delete camera_offset_;
   delete xyz_Scalar_;
 }
 
@@ -117,13 +117,9 @@ void navmanDisplay::onInitialize()
           "Typed camera coordinates override hydra control",this);
 //  camera_Position_ = new rviz::VectorProperty("Position",Ogre::Vector3(-0.032f,0,0),
   //                            "Position of camera to world base frame",this);
-  camera_Focus_ = new rviz::VectorProperty("Focus",Ogre::Vector3(0,0,0),
+  property_camfocus_ = new rviz::VectorProperty("Focus",Ogre::Vector3(0,0,0),
                                               "Focus Point of Camera",this);
-  Lcamera_Focus_ = new rviz::VectorProperty("LFocus",Ogre::Vector3(0,0,0),
-                                              "LFocus Point of Camera",this);
-  Rcamera_Focus_ = new rviz::VectorProperty("RFocus",Ogre::Vector3(0,0,0),
-                                              "RFocus Point of Camera",this);
-  sn_Position_ = new rviz::VectorProperty("SN Position",Ogre::Vector3(0,-5,2),
+  camera_offset_ = new rviz::VectorProperty("SN Position",Ogre::Vector3(0,-5,2),
                           "Position of scene node to world base frame",this);
   xyz_Scalar_ = new rviz::VectorProperty("X,Y,Z Scalars",Ogre::Vector3(1,1,1),
                           "Scalars for X, Y, and Z of controller motion input",this);
@@ -138,7 +134,8 @@ void navmanDisplay::onInitialize()
   window_->setVisible(false);
   window_->setAutoUpdated(false);
   window_->addListener(this); 
-  scene_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode();
+  camera_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode();
+  target_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode();
   pubsubSetup();
 }
 void navmanDisplay::cameraSetup()
@@ -147,15 +144,16 @@ void navmanDisplay::cameraSetup()
   window_ = render_widget_->getRenderWindow();
   n_cameras_[0] = scene_manager_->createCamera("Camera_Left");
   n_cameras_[1] = scene_manager_->createCamera("Camera_Right");
-  scene_node_->setOrientation(Ogre::Quaternion(0,0,0,1));
-  scene_node_->setPosition(sn_Position_->getVector());
+  camera_node_->setOrientation(Ogre::Quaternion(0,0,0,1));
+  camera_node_->setPosition(camera_offset_->getVector());
+  camera_node_->setAutoTracking(true, target_node_);
+  camera_node_->setFixedYawAxis(true);
   for(int i = 0; i<2; ++i)
   {
-  scene_node_->attachObject(n_cameras_[i]);
+  camera_node_->attachObject(n_cameras_[i]);
   n_cameras_[i]->setNearClipDistance(0.01f);
   n_cameras_[i]->setFarClipDistance(10000.0f);
   n_cameras_[i]->setPosition((i*2 -1)*0.064f*0.5f,0,0);
-  n_cameras_[i]->lookAt(0,0,0);
   n_viewports[i] = window_->addViewport(n_cameras_[i],i,0.5f*i,0,0.5f,1.0f);
   n_viewports[i]->setBackgroundColour(bg_color);
   }
@@ -214,37 +212,40 @@ void navmanDisplay::publishCursorUpdate()
 }
 void navmanDisplay::updateCamera()
 {
-  sn_Pose_.setOffset(sn_Position_->getVector());
-   
+  sn_Pose_.setOffset(camera_offset_->getVector());
   if(use_manual_coords_->getBool())
     {
-      scene_node_->setPosition(sn_Position_->getVector());
+      camera_node_->setPosition(camera_offset_->getVector());
     for (int i = 0; i<2; ++i)
       {
-      n_cameras_[i]->lookAt(camera_Focus_->getVector());
-      n_cameras_[i]->setFixedYawAxis(true, scene_node_->getOrientation() * Ogre::Vector3::UNIT_Z);
+      n_cameras_[i]->lookAt(property_camfocus_->getVector());
+      n_cameras_[i]->setFixedYawAxis(true, camera_node_->getOrientation() * Ogre::Vector3::UNIT_Z);
       }
     }
   if(!use_manual_coords_->getBool() && right_bumper_)
     {
+    Ogre::Quaternion quart = n_cameras_[0]->getRealOrientation();
+  /*   tf::Transformer tnodetf(tf::Quaternion(quart.x,quart.y,quart.z,quart.w),
+                                          camera_Pose_.getTFVector());
+     rvinciPose rpose;
+     rpose.setTFVector(tnodetf(input_change_[_RIGHT].getTFVector()));
+     camera_Pose_.updatePosition(rpose);*/
      camera_Pose_.updatePosition(input_change_[_RIGHT]);
-     camera_Focus_->setVector(camera_Pose_.getOgreVector());
-    for (int i = 0; i<2; ++i)
+     target_node_->setPosition(camera_Pose_.getOgreVector());
+     property_camfocus_->setVector(camera_Pose_.getOgreVector());
+     for (int i = 0; i<2; ++i)
        {
-       n_cameras_[i]->setFixedYawAxis(true, scene_node_->getOrientation() * Ogre::Vector3::UNIT_Z);
-       if(i == 0){Lcamera_Focus_->setVector(camera_Focus_->getVector());}
-       else{Rcamera_Focus_->setVector(camera_Focus_->getVector());}
-       n_cameras_[i]->lookAt(camera_Focus_->getVector());
+       n_cameras_[i]->setFixedYawAxis(true, camera_node_->getOrientation() * Ogre::Vector3::UNIT_Z);
        }
-     hydra_base_tf_.setOrigin(camera_Pose_.getTFVector());
-     hydra_base_tf_.setRotation(tf::Quaternion(0.0,0.0,0.0,1));
+     camera_tf_.setOrigin(camera_Pose_.getTFVector());
+     camera_tf_.setRotation(tf::Quaternion(0.0,0.0,0.0,1));
      if(left_bumper_)
       {
-        sn_Pose_.updatePosition(input_change_[_RIGHT]);
-        scene_node_->setPosition(sn_Pose_.getOgreVector());
+         sn_Pose_.updatePosition(input_change_[_RIGHT]);
+        camera_node_->setPosition(sn_Pose_.getOgreVector());
       }
     }
-  br_.sendTransform(tf::StampedTransform(hydra_base_tf_, ros::Time::now(), "base_link","/camera_frame"));
+  br_.sendTransform(tf::StampedTransform(camera_tf_, ros::Time::now(), "base_link","/camera_frame"));
 }
 //Overrides from OgreTargetListener
 void navmanDisplay::preRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)

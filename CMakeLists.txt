@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(naviman)
+project(rvinci)
 
 # Qt
 find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)

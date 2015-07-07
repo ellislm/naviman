@@ -113,24 +113,24 @@ private:
   rviz::FloatProperty *near_clip_property_;
 */
   Ogre::Camera* n_cameras_[2]; 
-  rviz::RenderWidget *render_widget_;
-  Ogre::SceneNode *scene_node_;
+  Ogre::SceneNode *camera_node_;
+  Ogre::SceneNode *target_node_;
   Ogre::Viewport *n_viewports[2];
   Ogre::RenderWindow *window_;
+
   bool right_bumper_, left_bumper_;
   float right_trigger_;
   ros::NodeHandle nh_;
   ros::Subscriber subscriber_camera_;
   ros::Publisher publisher_rhcursor_;
   ros::Publisher publisher_lhcursor_;
-  rviz::VectorProperty *camera_Focus_;
-    rviz::VectorProperty *Lcamera_Focus_;
-    rviz::VectorProperty *Rcamera_Focus_;
+  rviz::VectorProperty *property_camfocus_;
   rviz::VectorProperty *camera_Position_;
   rviz::BoolProperty *use_manual_coords_;
-  rviz::VectorProperty *sn_Position_;
+  rviz::VectorProperty *camera_offset_;
   rviz::VectorProperty *xyz_Scalar_;
-  tf::Transform hydra_base_tf_;
+  rviz::RenderWidget *render_widget_;
+  tf::Transform camera_tf_;
   tf::TransformBroadcaster br_;
   rvinciPose cursor_[2];
   rvinciPose camera_Pose_;

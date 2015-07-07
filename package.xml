@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>naviman</name>
+  <name>rvinci</name>
   <version>0.0.0</version>
-  <description>The naviman3dr_v2 package</description>
+  <description>RViz da Vinci package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
